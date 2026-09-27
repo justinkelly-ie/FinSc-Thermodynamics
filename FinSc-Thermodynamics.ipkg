@@ -3,12 +3,10 @@ version = 0.3.1
 authors = "Justin Kelly"
 brief   = "Layer 8 Pre-ordered Monoids, Entropic Arrow & Free Energy Subsystem."
 
-depends = FinSc-Cellular, FinSc-Geometry, FinSc-Multiset-Core, FinSc-Multiset-Transform, base, linear
+depends = FinSc-Geometry, FinSc-Multiset-Core, FinSc-Multiset-Transform, base, linear
 sourcedir = "src"
 
 modules = Thermodynamics,
-          Math.Thermodynamics.EntropicArrow,
-          Math.Thermodynamics.FluctuationStream,
-          Math.Thermodynamics.PreorderedMonoid
-
-
+          Stage0.FluctuationStream,
+          Stage0.PreorderedMonoid,
+          Stage1.Thermodynamics.EntropicArrow

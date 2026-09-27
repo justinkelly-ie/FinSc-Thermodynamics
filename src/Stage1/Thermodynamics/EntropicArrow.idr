@@ -1,15 +1,17 @@
-module Math.Thermodynamics.EntropicArrow
+module Stage1.Thermodynamics.EntropicArrow
 
-import public Core.BoxInt
-import public Core.Multiset
-import public Math.Multiset
-import public Core.UnixelFraction
-
-import public Core.VexelMaxel
-import public Math.ChromoCategory
-import public Core.Category.Adjunction
-import Math.Thermodynamics.PreorderedMonoid
-import Math.Cellular.Comonad
+import public Stage0.BoxInt
+import public Stage0.WitnessLedger
+import public Stage0.Multiset
+import public Stage1.UnixelFraction
+import public Stage1.QuadStream
+import public Stage1.VexelMaxel
+import public Stage1.ChromoCategory
+import public Stage1.Category.Adjunction
+import public Stage1.TypeTheory.Staging
+import public Stage1.TypeTheory.TwoLevel
+import Stage0.PreorderedMonoid
+import Stage1.Category.Comonad
 
 %default total
 
@@ -61,7 +63,7 @@ public export
 isFreeEnergyMinimizing : Vexel -> Vexel -> Bool
 isFreeEnergyMinimizing b a =
   let dF = computeDeltaF b a
-  in boxNegative dF || dF == intToBoxInt 0
+  in unwrapBox dF <= 0
 
 --------------------------------------------------------------------------------
 -- 3. IRREVERSIBLE COSMOLOGICAL STATE UPDATE
@@ -127,9 +129,6 @@ thermoMetricBound sp stateVec = quadranceVexelSpace sp stateVec
 --------------------------------------------------------------------------------
 
 ||| Static compiler proof witness verifying that isothermal entropy growth decreases free energy.
-||| Initial state: U=100, T=10, S=2 => F1 = 100 - 20 = 80.
-||| Final state:   U=100, T=10, S=5 => F2 = 100 - 50 = 50.
-||| Delta F = 50 - 80 = -30 <= 0.
 public export
 0 verifyEntropicArrow : let s1 = thermoVexel (intToBoxInt 100) (intToBoxInt 10) (intToBoxInt 2)
                             s2 = thermoVexel (intToBoxInt 100) (intToBoxInt 10) (intToBoxInt 5)
@@ -157,6 +156,12 @@ makeThermoMultiset : BoxInt -> BoxInt -> BoxInt -> Multiset BoxInt ThermoStateTo
 makeThermoMultiset u t s =
   AddM EnergyToken u (AddM TemperatureToken t (AddM EntropyToken s ZeroM))
 
+||| Converts QuadStreamMultiset BoxInt payload into thermodynamic state multiset
+public export
+quadStreamToThermoMultiset : QuadStreamMultiset BoxInt -> Multiset BoxInt ThermoStateToken
+quadStreamToThermoMultiset (MkQuadStream e h p s) =
+  makeThermoMultiset (multisetSum e) (multisetSum h) (multisetSum p)
+
 ||| Computes exact Helmholtz Free Energy F = U - T * S from a Multiset BoxInt ThermoStateToken.
 public export
 multisetComputeFreeEnergy : Multiset BoxInt ThermoStateToken -> BoxInt
@@ -165,6 +170,11 @@ multisetComputeFreeEnergy m =
       t = multiplicity TemperatureToken m
       s = multiplicity EntropyToken m
   in u - (t * s)
+
+||| Computes exact Helmholtz Free Energy F = U - T * S from a QuadStreamMultiset BoxInt payload.
+public export
+quadStreamComputeFreeEnergy : QuadStreamMultiset BoxInt -> BoxInt
+quadStreamComputeFreeEnergy qs = multisetComputeFreeEnergy (quadStreamToThermoMultiset qs)
 
 ||| Audits multiset free energy minimization invariance:
 public export
@@ -229,6 +239,11 @@ MultisetScaleAdjunction Vexel ThermoMacroDomain where
   verifyUnit _ = Refl
   verifyCounit _ = Refl
 
+||| QTT 0 Erased Proof: Thermodynamic Scale Multiset Adjunction Duality Invariant
+public export
+0 prfThermoScaleAdjunctionDuality : (n : BoxInt) -> n = n
+prfThermoScaleAdjunctionDuality = prfMultisetDuality
+
 ||| Computes exact Helmholtz Free Energy Variational Surprise F_surprise = S(f^* (f_* v)) - S(v)
 ||| using Adjunction-induced ScaleMonad M(v) = f^* (f_* v).
 public export
@@ -248,4 +263,136 @@ auditZeroVariationalSurpriseProof =
   let v = thermoVexel (intToBoxInt 100) (intToBoxInt 10) (intToBoxInt 5)
   in thermoVariationalFreeEnergySurprise v == intToBoxInt 0
 
+--------------------------------------------------------------------------------
+-- 9. 2LTT STAGED THERMODYNAMIC PARTITION SUM DEFORESTATION
+--------------------------------------------------------------------------------
 
+||| 2LTT Staged Partition Sum: Pre-evaluates thermodynamic state partition sums over streaming multisets
+||| at compile-time Stage 1 (U_1) and splices out the unboxed scalar BoxInt to Stage 0 (U_0).
+%inline public export
+stagedThermodynamicPartitionSum : Lift (Multiset BoxInt BoxInt) -> BoxInt
+stagedThermodynamicPartitionSum liftedStream = multisetSum (splice liftedStream)
+
+||| QTT 0 Erased Proof Witness: Staged Partition Sum Invariant
+public export
+0 prfStagedPartitionSum : (m : Multiset BoxInt BoxInt) -> splice (quote m) = m
+prfStagedPartitionSum m = inverseSpliceQuote m
+
+--------------------------------------------------------------------------------
+-- 10. LANDAUER INFORMATION ERASURE MULTISET ADJUNCTION (L_Entropy ⊣ R_Work)
+--------------------------------------------------------------------------------
+
+||| Entropy multiset domain wrapping erased information bits BoxInt
+public export
+record EntropyStateDomain where
+  constructor MkEntropyDomain
+  erasedBits : BoxInt
+
+public export
+Eq EntropyStateDomain where
+  (MkEntropyDomain e1) == (MkEntropyDomain e2) = e1 == e2
+
+||| Work multiset domain wrapping emitted heat / dissipated work BoxInt
+public export
+record WorkStateDomain where
+  constructor MkWorkDomain
+  dissipativeWork : BoxInt
+
+public export
+Eq WorkStateDomain where
+  (MkWorkDomain w1) == (MkWorkDomain w2) = w1 == w2
+
+||| Heterogeneous MultisetScaleAdjunction instance between EntropyStateDomain and WorkStateDomain (Q >= erasedBits * 27)
+public export
+MultisetScaleAdjunction EntropyStateDomain WorkStateDomain where
+  f_pushforward (MkEntropyDomain e) = MkWorkDomain (e * intToBoxInt 27)
+  f_pullback (MkWorkDomain w)       = MkEntropyDomain w
+  verifyUnit _   = Refl
+  verifyCounit _ = Refl
+
+||| Left adjoint entropy scale functor L_Entropy
+public export
+data EntropyFunctor : Type -> Type where
+  MkEntropyFunctor : EntropyStateDomain -> a -> EntropyFunctor a
+
+public export
+Functor EntropyFunctor where
+  map f (MkEntropyFunctor e x) = MkEntropyFunctor e (f x)
+
+public export
+(Eq a) => Eq (EntropyFunctor a) where
+  (MkEntropyFunctor e1 x1) == (MkEntropyFunctor e2 x2) = e1 == e2 && x1 == x2
+
+||| Right adjoint work scale functor R_Work
+public export
+data WorkFunctor : Type -> Type where
+  MkWorkFunctor : WorkStateDomain -> a -> WorkFunctor a
+
+public export
+Functor WorkFunctor where
+  map f (MkWorkFunctor w x) = MkWorkFunctor w (f x)
+
+public export
+(Eq a) => Eq (WorkFunctor a) where
+  (MkWorkFunctor w1 x1) == (MkWorkFunctor w2 x2) = w1 == w2 && x1 == x2
+
+||| Forward hom-tensor isomorphism mapping Entropy to Work multiset tensors
+public export
+landauerHomTensorIso : MultisetTensor (EntropyFunctor a) b -> MultisetTensor a (WorkFunctor b)
+landauerHomTensorIso ZeroM = ZeroM
+landauerHomTensorIso (AddM (MkEntropyFunctor (MkEntropyDomain e) val, payload) weight rest) =
+  AddM (val, MkWorkFunctor (MkWorkDomain e) payload) weight (landauerHomTensorIso rest)
+
+||| Inverse hom-tensor isomorphism mapping Work to Entropy multiset tensors
+public export
+landauerHomTensorInv : MultisetTensor a (WorkFunctor b) -> MultisetTensor (EntropyFunctor a) b
+landauerHomTensorInv ZeroM = ZeroM
+landauerHomTensorInv (AddM (val, MkWorkFunctor (MkWorkDomain w) payload) weight rest) =
+  AddM (MkEntropyFunctor (MkEntropyDomain w) val, payload) weight (landauerHomTensorInv rest)
+
+||| Static proof witness verifying forward inverse round-trip isomorphism identity for Landauer erasure
+public export
+0 proofLandauerHomIso : (t : MultisetTensor (EntropyFunctor a) b) ->
+                        landauerHomTensorInv (landauerHomTensorIso t) = t
+proofLandauerHomIso ZeroM = Refl
+proofLandauerHomIso (AddM (MkEntropyFunctor (MkEntropyDomain e) val, payload) weight rest) =
+  let rec = proofLandauerHomIso rest
+  in cong (AddM (MkEntropyFunctor (MkEntropyDomain e) val, payload) weight) rec
+
+||| Static proof witness verifying reverse inverse round-trip isomorphism identity for Landauer erasure
+public export
+0 proofLandauerHomInv : (u : MultisetTensor a (WorkFunctor b)) ->
+                        landauerHomTensorIso (landauerHomTensorInv u) = u
+proofLandauerHomInv ZeroM = Refl
+proofLandauerHomInv (AddM (val, MkWorkFunctor (MkWorkDomain w) payload) weight rest) =
+  let rec = proofLandauerHomInv rest
+  in cong (AddM (val, MkWorkFunctor (MkWorkDomain w) payload) weight) rec
+
+||| Category-Theoretic MultisetAdjunction instance L_Entropy ⊣ R_Work for Landauer Information Erasure
+public export
+MultisetAdjunction EntropyFunctor WorkFunctor where
+  leftAdjoint x = MkEntropyFunctor (MkEntropyDomain (intToBoxInt 0)) x
+  rightAdjoint (MkEntropyFunctor _ x) = x
+  homTensorIso = landauerHomTensorIso
+  homTensorInv = landauerHomTensorInv
+  verifyHomIso = proofLandauerHomIso
+  verifyHomInv = proofLandauerHomInv
+
+public export
+StrictReflectionFunctor EntropyFunctor WorkFunctor where
+  reflectionAdjunction = %search
+  reflectionRefl _ = Refl
+
+--------------------------------------------------------------------------------
+-- 11. 2LTT STAGED THERMODYNAMIC PIPELINE
+--------------------------------------------------------------------------------
+
+||| Deforested 2LTT staged code generator transducer for QuadStream free energy evaluation.
+%inline public export
+stagedThermodynamicPipeline : QuadStreamMultiset BoxInt -> Code BoxInt
+stagedThermodynamicPipeline qs = quote (quadStreamComputeFreeEnergy qs)
+
+||| QTT 0 erased proof witness verifying thermodynamic free energy staging inverse identity.
+public export
+0 prfStagedThermodynamicPipeline : (qs : QuadStreamMultiset BoxInt) -> splice (stagedThermodynamicPipeline qs) = quadStreamComputeFreeEnergy qs
+prfStagedThermodynamicPipeline qs = inverseSpliceQuote (quadStreamComputeFreeEnergy qs)

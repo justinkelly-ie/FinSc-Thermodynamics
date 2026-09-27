@@ -17,8 +17,3 @@ ipkg = "FinSc-Multiset-Transform.ipkg"
 type = "local"
 path = "../FinSc-Geometry"
 ipkg = "FinSc-Geometry.ipkg"
-
-[custom.all.FinSc-Cellular]
-type = "local"
-path = "../FinSc-Cellular"
-ipkg = "FinSc-Cellular.ipkg"

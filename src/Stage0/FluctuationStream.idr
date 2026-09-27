@@ -1,9 +1,9 @@
-module Math.Thermodynamics.FluctuationStream
+module Stage0.FluctuationStream
 
-import public Core.BoxInt
-import public Core.Order.Preorder
-import public Math.OnSeq.FusedStream
-import public Math.Thermodynamics.EntropicArrow
+import public Stage0.BoxInt
+import public Stage1.Order.Preorder
+import public Stage0.OnSeq.FusedStream
+import public Stage1.Thermodynamics.EntropicArrow
 import Data.Fuel
 
 %default total

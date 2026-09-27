@@ -1,9 +1,9 @@
-module Math.Thermodynamics.PreorderedMonoid
+module Stage0.PreorderedMonoid
 
-import public Core.Order.Preorder
-import Core.BoxInt
-import Core.UnixelFraction
-import Core.Goh
+import public Stage1.Order.Preorder
+import Stage0.BoxInt
+import Stage1.UnixelFraction
+import Stage1.Goh
 import Data.Nat
 
 %default total

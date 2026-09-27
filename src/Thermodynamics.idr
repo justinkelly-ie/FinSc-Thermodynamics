@@ -1,7 +1,8 @@
 module Thermodynamics
 
-import public Math.Thermodynamics.EntropicArrow
-import public Math.Thermodynamics.FluctuationStream
-import public Math.Thermodynamics.PreorderedMonoid
+import public Stage0.FluctuationStream
+import public Stage0.PreorderedMonoid
+
+import public Stage1.Thermodynamics.EntropicArrow
 
 %default total
