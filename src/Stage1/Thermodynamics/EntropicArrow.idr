@@ -7,11 +7,11 @@ import public Stage1.UnixelFraction
 import public Stage1.QuadStream
 import public Stage1.VexelMaxel
 import public Stage1.ChromoCategory
-import public Stage1.Category.Adjunction
+import public Stage1.MultisetDuality
 import public Stage1.TypeTheory.Staging
 import public Stage1.TypeTheory.TwoLevel
 import Stage0.PreorderedMonoid
-import Stage1.Category.Comonad
+import Stage1.SpatialStencil
 
 %default total
 
@@ -239,10 +239,11 @@ MultisetScaleAdjunction Vexel ThermoMacroDomain where
   verifyUnit _ = Refl
   verifyCounit _ = Refl
 
-||| QTT 0 Erased Proof: Thermodynamic Scale Multiset Adjunction Duality Invariant
+||| QTT 0 Erased Proof: Thermodynamic Scale Multiset Adjunction Counit Invariant
 public export
-0 prfThermoScaleAdjunctionDuality : (n : BoxInt) -> n = n
-prfThermoScaleAdjunctionDuality = prfMultisetDuality
+0 prfThermoScaleAdjunctionDuality : (m : ThermoMacroDomain) ->
+  f_pushforward (the Vexel (f_pullback m)) = m
+prfThermoScaleAdjunctionDuality (MkThermoMacro e t s) = Refl
 
 ||| Computes exact Helmholtz Free Energy Variational Surprise F_surprise = S(f^* (f_* v)) - S(v)
 ||| using Adjunction-induced ScaleMonad M(v) = f^* (f_* v).

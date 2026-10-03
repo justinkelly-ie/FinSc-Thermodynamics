@@ -8,10 +8,10 @@ type = "local"
 path = "../FinSc-Multiset-Core"
 ipkg = "FinSc-Multiset-Core.ipkg"
 
-[custom.all.FinSc-Multiset-Transform]
+[custom.all.FinSc-Phase-Unfolding]
 type = "local"
-path = "../FinSc-Multiset-Transform"
-ipkg = "FinSc-Multiset-Transform.ipkg"
+path = "../FinSc-Phase-Unfolding"
+ipkg = "FinSc-Phase-Unfolding.ipkg"
 
 [custom.all.FinSc-Geometry]
 type = "local"
