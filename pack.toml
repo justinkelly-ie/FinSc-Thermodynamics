@@ -3,17 +3,92 @@ name = "FinSc-Thermodynamics"
 version = "0.3.1"
 ipkg = "FinSc-Thermodynamics.ipkg"
 
-[custom.all.FinSc-Multiset-Core]
+[custom.all.FinSc-Multiset]
 type = "local"
-path = "../FinSc-Multiset-Core"
-ipkg = "FinSc-Multiset-Core.ipkg"
+path = "../FinSc-Multiset"
+ipkg = "FinSc-Multiset.ipkg"
+
+[custom.all.FinSc-Metric-Substrate]
+type = "local"
+path = "../FinSc-Metric-Substrate"
+ipkg = "FinSc-Metric-Substrate.ipkg"
 
 [custom.all.FinSc-Phase-Unfolding]
 type = "local"
 path = "../FinSc-Phase-Unfolding"
 ipkg = "FinSc-Phase-Unfolding.ipkg"
 
+[custom.all.FinSc-Radix-Binary]
+type = "local"
+path = "../FinSc-Radix-Binary"
+ipkg = "FinSc-Radix-Binary.ipkg"
+
+[custom.all.FinSc-Radix-Ternary]
+type = "local"
+path = "../FinSc-Radix-Ternary"
+ipkg = "FinSc-Radix-Ternary.ipkg"
+
+[custom.all.FinSc-Dihedron]
+type = "local"
+path = "../FinSc-Dihedron"
+ipkg = "FinSc-Dihedron.ipkg"
+
 [custom.all.FinSc-Geometry]
 type = "local"
 path = "../FinSc-Geometry"
 ipkg = "FinSc-Geometry.ipkg"
+
+[custom.all.FinSc-Action-Dynamics]
+type = "local"
+path = "../FinSc-Action-Dynamics"
+ipkg = "FinSc-Action-Dynamics.ipkg"
+
+[custom.all.FinSc-Thermodynamics]
+type = "local"
+path = "."
+ipkg = "FinSc-Thermodynamics.ipkg"
+
+[custom.all.FinSc-Cosmic-Horizon]
+type = "local"
+path = "../FinSc-Cosmic-Horizon"
+ipkg = "FinSc-Cosmic-Horizon.ipkg"
+
+[custom.all.FinSc-Electromagnetism]
+type = "local"
+path = "../FinSc-Electromagnetism"
+ipkg = "FinSc-Electromagnetism.ipkg"
+
+[custom.all.FinSc-Gauge-Fields]
+type = "local"
+path = "../FinSc-Gauge-Fields"
+ipkg = "FinSc-Gauge-Fields.ipkg"
+
+[custom.all.FinSc-Nuclear-Matter]
+type = "local"
+path = "../FinSc-Nuclear-Matter"
+ipkg = "FinSc-Nuclear-Matter.ipkg"
+
+[custom.all.FinSc-Chemistry]
+type = "local"
+path = "../FinSc-Chemistry"
+ipkg = "FinSc-Chemistry.ipkg"
+
+[custom.all.FinSc-Biology]
+type = "local"
+path = "../FinSc-Biology"
+ipkg = "FinSc-Biology.ipkg"
+
+[custom.all.FinSc-Quantum-Coherence]
+type = "local"
+path = "../FinSc-Quantum-Coherence"
+ipkg = "FinSc-Quantum-Coherence.ipkg"
+
+[custom.all.FinSc-Cosmos]
+type = "local"
+path = "../FinSc-Cosmos"
+ipkg = "FinSc-Cosmos.ipkg"
+
+[custom.all.idris2-QuickCheck]
+type = "local"
+path = "../idris2-QuickCheck"
+ipkg = "idris2-QuickCheck.ipkg"

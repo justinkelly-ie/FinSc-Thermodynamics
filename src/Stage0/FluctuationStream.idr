@@ -34,30 +34,18 @@ unfoldWorkStream workList = MkStream nextStep (1, workList)
     nextStep (_, []) = Done
     nextStep (idx, w :: ws) = Yield (MkFluctuation idx w (intToBoxInt 0)) (idx + 1, ws)
 
-||| Folds total work done across a deforested thermodynamic fluctuation stream using hylomorphism.
-public export covering
+||| Folds total work done across a deforested thermodynamic fluctuation stream using fueled fold.
+public export
 fusedTotalWork : Fuel -> List BoxInt -> BoxInt
 fusedTotalWork f workList =
-  fusedHylomorphism f
-    (\(idx, ws) => case ws of
-                     [] => Done
-                     w :: ws' => Yield (MkFluctuation idx w (intToBoxInt 0)) (idx + 1, ws'))
-    (\step, acc => workDone step + acc)
-    (intToBoxInt 0)
-    (1, workList)
+  foldStreamFuel f (\acc, step => workDone step + acc) (intToBoxInt 0) (unfoldWorkStream workList)
 
 ||| Evaluates discrete Jarzynski-style exponent sum: \sum (1 - \beta * W)
 ||| as a discrete linear approximation of <e^{-\beta W}> over work fluctuation streams.
-public export covering
+public export
 fusedJarzynskiLinearBound : Fuel -> BoxInt -> List BoxInt -> BoxInt
 fusedJarzynskiLinearBound f beta workList =
-  fusedHylomorphism f
-    (\(idx, ws) => case ws of
-                     [] => Done
-                     w :: ws' => Yield (MkFluctuation idx w (intToBoxInt 0)) (idx + 1, ws'))
-    (\step, acc => (intToBoxInt 1 - (beta * workDone step)) + acc)
-    (intToBoxInt 0)
-    (1, workList)
+  foldStreamFuel f (\acc, step => (intToBoxInt 1 - (beta * workDone step)) + acc) (intToBoxInt 0) (unfoldWorkStream workList)
 
 --------------------------------------------------------------------------------
 -- 2. DEFORESTED ENTROPY DISSIPATION STREAM TRANSDUCERS & LANDAUER AUDIT
@@ -76,32 +64,29 @@ Eq EntropyDissipationStep where
   (MkDissipationStep id1 b1 h1) == (MkDissipationStep id2 b2 h2) =
     id1 == id2 && b1 == b2 && h1 == h2
 
+||| Unfolds a list of dissipation steps into a deforested stream.
+public export
+unfoldDissipationStream : List (Nat, Nat) -> FusedStream EntropyDissipationStep
+unfoldDissipationStream steps = MkStream nextStep (1, steps)
+  where
+    nextStep : (Int, List (Nat, Nat)) -> Step (Int, List (Nat, Nat)) EntropyDissipationStep
+    nextStep (_, []) = Done
+    nextStep (idx, (b, h) :: rest) = Yield (MkDissipationStep idx b h) (idx + 1, rest)
+
 ||| O(1) allocation deforested stream transducer folding total emitted heat across entropy dissipation steps.
-public export covering
+public export
 fusedEntropyDissipationStream : Fuel -> List (Nat, Nat) -> Nat
 fusedEntropyDissipationStream f steps =
-  fusedHylomorphism f
-    (\(idx, st) => case st of
-                     [] => Done
-                     (b, h) :: rest => Yield (MkDissipationStep idx b h) (idx + 1, rest))
-    (\step, acc => emittedHeat step + acc)
-    0
-    (1, steps)
+  foldStreamFuel f (\acc, step => emittedHeat step + acc) 0 (unfoldDissipationStream steps)
 
 ||| O(1) allocation deforested stream transducer folding total erased bits across entropy dissipation steps.
-public export covering
+public export
 fusedComputeTotalErasedBits : Fuel -> List (Nat, Nat) -> Nat
 fusedComputeTotalErasedBits f steps =
-  fusedHylomorphism f
-    (\(idx, st) => case st of
-                     [] => Done
-                     (b, h) :: rest => Yield (MkDissipationStep idx b h) (idx + 1, rest))
-    (\step, acc => erasedBits step + acc)
-    0
-    (1, steps)
+  foldStreamFuel f (\acc, step => erasedBits step + acc) 0 (unfoldDissipationStream steps)
 
 ||| Deforested stream transducer validating Landauer erasure bound across entropy dissipation streams.
-public export covering
+public export
 fusedValidateLandauerStream : Fuel -> List (Nat, Nat) -> Bool
 fusedValidateLandauerStream f steps =
   let totalBits = fusedComputeTotalErasedBits f steps
@@ -109,18 +94,116 @@ fusedValidateLandauerStream f steps =
   in natLTE (totalBits * 27) totalHeat
 
 --------------------------------------------------------------------------------
--- 3. VERIFICATION AUDIT WITNESS
+-- 3. VERIFICATION AUDIT WITNESS & LINEAR QTT ENTROPY TRANSDUCER
 --------------------------------------------------------------------------------
 
 ||| Audit witness verifying zero-allocation total work and entropy dissipation stream folding.
-public export covering
+public export
 auditFluctuationStreamProof : Bool
 auditFluctuationStreamProof =
   let works = [intToBoxInt 2, intToBoxInt 3, intToBoxInt 5]
-      totW = fusedTotalWork (limit 100) works
-      jBound = fusedJarzynskiLinearBound (limit 100) (intToBoxInt 1) works
+      totW = fusedTotalWork (limit (length works)) works
+      jBound = fusedJarzynskiLinearBound (limit (length works)) (intToBoxInt 1) works
       dissSteps = [(1, 27), (2, 60), (3, 90)]
-      totHeat = fusedEntropyDissipationStream (limit 100) dissSteps
-      landauerValid = fusedValidateLandauerStream (limit 100) dissSteps
+      totHeat = fusedEntropyDissipationStream (limit (length dissSteps)) dissSteps
+      landauerValid = fusedValidateLandauerStream (limit (length dissSteps)) dissSteps
   in unwrapBox totW == 10 && unwrapBox jBound == -7 && totHeat == 177 && landauerValid == True
+
+||| Strictly linear QTT entropy production stream transducer:
+public export
+record LinearEntropyTransducer where
+  constructor MkLinearEntropyTransducer
+  stepEntropyProduction : (1 strm : FusedStream FluctuationStep) -> FusedStream (BoxInt, Bool)
+
+public export
+linearEntropyTransducer : LinearEntropyTransducer
+linearEntropyTransducer =
+  MkLinearEntropyTransducer (\(MkStream next seed) =>
+    MkStream (\s => case next s of
+                      Done => Done
+                      Skip s' => Skip s'
+                      Yield step s' =>
+                        let q = heatLoss step
+                            nonNeg = unwrapBox q >= 0
+                        in Yield (q, nonNeg) s') seed)
+
+||| Audits that open-system thermodynamic dissipation satisfies monotonic non-negative entropy production.
+public export
+auditStreamingEntropyProductionProof : Bool
+auditStreamingEntropyProductionProof =
+  let steps = [ MkFluctuation 1 (intToBoxInt 5) (intToBoxInt 2)
+              , MkFluctuation 2 (intToBoxInt 8) (intToBoxInt 4) ]
+      strm = linearEntropyTransducer.stepEntropyProduction (stream steps)
+      (count, allNonNeg) =
+        foldStreamNat (length steps)
+          (\(cnt, ok), (_, nonNeg) => (cnt + 1, ok && nonNeg))
+          (0, True)
+          strm
+  in count == 2 && allNonNeg
+
+--------------------------------------------------------------------------------
+-- 4. SINGLE-PASS HELMHOLTZ FREE ENERGY & PARTITION FUNCTION ACCUMULATOR
+--------------------------------------------------------------------------------
+
+||| Accumulates discrete Boltzmann state energy weights over a deforested stream:
+||| Z_discrete = \sum w_i * (1 - \beta * E_i)
+public export
+fusedPartitionSumStream : Fuel -> BoxInt -> FusedStream (BoxInt, BoxInt) -> BoxInt
+fusedPartitionSumStream f beta strm =
+  foldStreamFuel f
+    (\acc, (e, w) =>
+      let term = mulBox w (subBox (intToBoxInt 1) (mulBox beta e))
+      in addBox acc term)
+    (intToBoxInt 0)
+    strm
+
+||| Single-pass discrete Helmholtz Free Energy accumulator F = U - TS:
+||| Computes internal energy U and entropy dissipation S simultaneously over a fluctuation stream.
+public export
+fusedHelmholtzFreeEnergyStream : Fuel -> BoxInt -> FusedStream FluctuationStep -> BoxInt
+fusedHelmholtzFreeEnergyStream f temp strm =
+  let (u, s) =
+        foldStreamFuel f
+          (\(uAcc, sAcc), step => (addBox uAcc (workDone step), addBox sAcc (heatLoss step)))
+          (intToBoxInt 0, intToBoxInt 0)
+          strm
+  in subBox u (mulBox temp s)
+
+||| Single-pass discrete Helmholtz Free Energy accumulator F = U - TS directly from
+||| streaming pairs of (energy, count) without intermediate list allocation.
+public export
+streamThermalFreeEnergy : Fuel -> BoxInt -> FusedStream (BoxInt, BoxInt) -> BoxInt
+streamThermalFreeEnergy f temp strm =
+  let (u, s) =
+        foldStreamFuel f
+          (\(uAcc, sAcc), (e, count) =>
+            (addBox uAcc (mulBox e count), addBox sAcc count))
+          (intToBoxInt 0, intToBoxInt 0)
+          strm
+  in subBox u (mulBox temp s)
+
+||| Nat fuel-bounded single-pass discrete Helmholtz Free Energy accumulator F = U - TS.
+public export
+streamThermalFreeEnergyNat : (fuel : Nat) -> BoxInt -> FusedStream (BoxInt, BoxInt) -> BoxInt
+streamThermalFreeEnergyNat f temp strm =
+  let (u, s) =
+        foldStreamNat f
+          (\(uAcc, sAcc), (e, count) =>
+            (addBox uAcc (mulBox e count), addBox sAcc count))
+          (intToBoxInt 0, intToBoxInt 0)
+          strm
+  in subBox u (mulBox temp s)
+
+||| Audit witness verifying direct streaming thermal free energy computation.
+public export
+auditDirectThermalFreeEnergyProof : Bool
+auditDirectThermalFreeEnergyProof =
+  let hadronPairs = [ (intToBoxInt 5, intToBoxInt 2)
+                    , (intToBoxInt 20, intToBoxInt 3)
+                    ]
+      strm = stream hadronPairs
+      temp = intToBoxInt 10
+      f = streamThermalFreeEnergyNat 100 temp strm
+  in unwrapBox f == 20
+
 
