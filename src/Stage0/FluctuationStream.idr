@@ -35,18 +35,30 @@ unfoldWorkStream workList = MkStream nextStep (1, workList)
     nextStep (_, []) = Done
     nextStep (idx, w :: ws) = Yield (MkFluctuation idx w (intToBoxInt 0)) (idx + 1, ws)
 
+||| Folds total work done directly across a deforested thermodynamic fluctuation stream.
+public export
+fusedTotalWorkStream : Fuel -> FusedStream FluctuationStep -> BoxInt
+fusedTotalWorkStream f strm =
+  foldStreamFuel f (\acc, step => addBox (workDone step) acc) (intToBoxInt 0) strm
+
 ||| Folds total work done across a deforested thermodynamic fluctuation stream using fueled fold.
 public export
 fusedTotalWork : Fuel -> List BoxInt -> BoxInt
 fusedTotalWork f workList =
-  foldStreamFuel f (\acc, step => workDone step + acc) (intToBoxInt 0) (unfoldWorkStream workList)
+  fusedTotalWorkStream f (unfoldWorkStream workList)
+
+||| Evaluates discrete Jarzynski-style exponent sum directly over a fluctuation stream:
+public export
+fusedJarzynskiLinearBoundStream : Fuel -> BoxInt -> FusedStream FluctuationStep -> BoxInt
+fusedJarzynskiLinearBoundStream f beta strm =
+  foldStreamFuel f (\acc, step => addBox (subBox (intToBoxInt 1) (mulBox beta (workDone step))) acc) (intToBoxInt 0) strm
 
 ||| Evaluates discrete Jarzynski-style exponent sum: \sum (1 - \beta * W)
 ||| as a discrete linear approximation of <e^{-\beta W}> over work fluctuation streams.
 public export
 fusedJarzynskiLinearBound : Fuel -> BoxInt -> List BoxInt -> BoxInt
 fusedJarzynskiLinearBound f beta workList =
-  foldStreamFuel f (\acc, step => (intToBoxInt 1 - (beta * workDone step)) + acc) (intToBoxInt 0) (unfoldWorkStream workList)
+  fusedJarzynskiLinearBoundStream f beta (unfoldWorkStream workList)
 
 --------------------------------------------------------------------------------
 -- 2. DEFORESTED ENTROPY DISSIPATION STREAM TRANSDUCERS & LANDAUER AUDIT
@@ -74,27 +86,46 @@ unfoldDissipationStream steps = MkStream nextStep (1, steps)
     nextStep (_, []) = Done
     nextStep (idx, (b, h) :: rest) = Yield (MkDissipationStep idx b h) (idx + 1, rest)
 
+||| Direct deforested stream transducer folding total emitted heat across entropy dissipation steps.
+public export
+fusedEntropyDissipationStreamDirect : Fuel -> FusedStream EntropyDissipationStep -> Nat
+fusedEntropyDissipationStreamDirect f strm =
+  foldStreamFuel f (\acc, step => emittedHeat step + acc) 0 strm
+
 ||| O(1) allocation deforested stream transducer folding total emitted heat across entropy dissipation steps.
 public export
 fusedEntropyDissipationStream : Fuel -> List (Nat, Nat) -> Nat
 fusedEntropyDissipationStream f steps =
-  foldStreamFuel f (\acc, step => emittedHeat step + acc) 0 (unfoldDissipationStream steps)
+  fusedEntropyDissipationStreamDirect f (unfoldDissipationStream steps)
+
+||| Direct deforested stream transducer folding total erased bits across entropy dissipation steps.
+public export
+fusedComputeTotalErasedBitsDirect : Fuel -> FusedStream EntropyDissipationStep -> Nat
+fusedComputeTotalErasedBitsDirect f strm =
+  foldStreamFuel f (\acc, step => erasedBits step + acc) 0 strm
 
 ||| O(1) allocation deforested stream transducer folding total erased bits across entropy dissipation steps.
 public export
 fusedComputeTotalErasedBits : Fuel -> List (Nat, Nat) -> Nat
 fusedComputeTotalErasedBits f steps =
-  foldStreamFuel f (\acc, step => erasedBits step + acc) 0 (unfoldDissipationStream steps)
+  fusedComputeTotalErasedBitsDirect f (unfoldDissipationStream steps)
 
-||| Deforested stream transducer validating dynamic Landauer erasure bound across entropy dissipation streams
+||| Single-pass deforested stream transducer validating dynamic Landauer erasure bound
+||| directly across an EntropyDissipationStep stream without multiple passes or list allocations.
+public export
+fusedValidateDynamicLandauerStreamDirect : Fuel -> (qBound : Nat) -> FusedStream EntropyDissipationStep -> Bool
+fusedValidateDynamicLandauerStreamDirect f qBound strm =
+  let (totalBits, totalHeat) =
+        foldStreamFuel f (\acc, step => (fst acc + erasedBits step, snd acc + emittedHeat step)) (the (Nat, Nat) (0, 0)) strm
+  in natLTE (totalBits * qBound) totalHeat
+
+||| Deforested stream transducer validating dynamic Landauer erasure bound across entropy dissipation steps
 ||| scaled by active boundary quadrance qBound = Q_Blue = x^2 + y^2:
 ||| Total emitted heat must be >= totalBits * qBound.
 public export
 fusedValidateDynamicLandauerStream : Fuel -> (qBound : Nat) -> List (Nat, Nat) -> Bool
 fusedValidateDynamicLandauerStream f qBound steps =
-  let totalBits = fusedComputeTotalErasedBits f steps
-      totalHeat = fusedEntropyDissipationStream f steps
-  in natLTE (totalBits * qBound) totalHeat
+  fusedValidateDynamicLandauerStreamDirect f qBound (unfoldDissipationStream steps)
 
 ||| Deforested stream transducer validating epoch-indexed Landauer erasure bound
 ||| where epoch index k determines dynamic boundary quadrance Q_Blue(x_k, y_k).
@@ -102,7 +133,7 @@ public export
 fusedValidateEpochLandauerStream : Fuel -> (k : Nat) -> List (Nat, Nat) -> Bool
 fusedValidateEpochLandauerStream f k steps =
   let (x, y) = epochPythagoreanCoordinate k
-      qBlueNat = integerToNat (unwrapBox ((x * x) + (y * y)))
+      qBlueNat = boxToNat (addBox (mulBox x x) (mulBox y y))
   in fusedValidateDynamicLandauerStream f qBlueNat steps
 
 ||| Deforested stream transducer validating Landauer erasure bound across entropy dissipation streams.
