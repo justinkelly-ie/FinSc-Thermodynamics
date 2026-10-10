@@ -4,6 +4,7 @@ import public Stage0.BoxInt
 import public Stage1.Order.Preorder
 import public Stage0.OnSeq.FusedStream
 import public Stage1.Thermodynamics.EntropicArrow
+import public Stage1.Multiset.PrimordialUnfolding
 import Data.Fuel
 
 %default total
@@ -85,13 +86,31 @@ fusedComputeTotalErasedBits : Fuel -> List (Nat, Nat) -> Nat
 fusedComputeTotalErasedBits f steps =
   foldStreamFuel f (\acc, step => erasedBits step + acc) 0 (unfoldDissipationStream steps)
 
+||| Deforested stream transducer validating dynamic Landauer erasure bound across entropy dissipation streams
+||| scaled by active boundary quadrance qBound = Q_Blue = x^2 + y^2:
+||| Total emitted heat must be >= totalBits * qBound.
+public export
+fusedValidateDynamicLandauerStream : Fuel -> (qBound : Nat) -> List (Nat, Nat) -> Bool
+fusedValidateDynamicLandauerStream f qBound steps =
+  let totalBits = fusedComputeTotalErasedBits f steps
+      totalHeat = fusedEntropyDissipationStream f steps
+  in natLTE (totalBits * qBound) totalHeat
+
+||| Deforested stream transducer validating epoch-indexed Landauer erasure bound
+||| where epoch index k determines dynamic boundary quadrance Q_Blue(x_k, y_k).
+public export
+fusedValidateEpochLandauerStream : Fuel -> (k : Nat) -> List (Nat, Nat) -> Bool
+fusedValidateEpochLandauerStream f k steps =
+  let (x, y) = epochPythagoreanCoordinate k
+      qBlueNat = integerToNat (unwrapBox ((x * x) + (y * y)))
+  in fusedValidateDynamicLandauerStream f qBlueNat steps
+
 ||| Deforested stream transducer validating Landauer erasure bound across entropy dissipation streams.
+||| Deprecated: Prefer `fusedValidateDynamicLandauerStream` or `fusedValidateEpochLandauerStream`.
 public export
 fusedValidateLandauerStream : Fuel -> List (Nat, Nat) -> Bool
 fusedValidateLandauerStream f steps =
-  let totalBits = fusedComputeTotalErasedBits f steps
-      totalHeat = fusedEntropyDissipationStream f steps
-  in natLTE (totalBits * 27) totalHeat
+  fusedValidateDynamicLandauerStream f 27 steps
 
 --------------------------------------------------------------------------------
 -- 3. VERIFICATION AUDIT WITNESS & LINEAR QTT ENTROPY TRANSDUCER
@@ -107,7 +126,8 @@ auditFluctuationStreamProof =
       dissSteps = [(1, 27), (2, 60), (3, 90)]
       totHeat = fusedEntropyDissipationStream (limit (length dissSteps)) dissSteps
       landauerValid = fusedValidateLandauerStream (limit (length dissSteps)) dissSteps
-  in unwrapBox totW == 10 && unwrapBox jBound == -7 && totHeat == 177 && landauerValid == True
+      dynamicLandauerValid = fusedValidateEpochLandauerStream (limit (length dissSteps)) 0 dissSteps
+  in unwrapBox totW == 10 && unwrapBox jBound == -7 && totHeat == 177 && landauerValid == True && dynamicLandauerValid == True
 
 ||| Strictly linear QTT entropy production stream transducer:
 public export
