@@ -12,6 +12,7 @@ import public Stage1.TypeTheory.Staging
 import public Stage1.TypeTheory.TwoLevel
 import Stage0.PreorderedMonoid
 import Stage1.SpatialStencil
+import public Stage1.TypeTheory.Smoothness
 
 %default total
 
@@ -190,11 +191,16 @@ auditMultisetThermoFreeEnergyProof =
 -- 7. COMPILE-TIME LANDAUER ERASED HEAT BOUND WITNESSES (Delta Q >= erasedBits * 27)
 --------------------------------------------------------------------------------
 
+||| Certified Landauer quantum erasure scale factor dimension: 27 (Elliptic lattice capacity).
+public export
+landauerQuantumDimension : CosmicDimension
+landauerQuantumDimension = dimElliptic27
+
 ||| Erased compile-time proof witness verifying Landauer heat erasure bound:
 ||| Emitted heat Q (in discrete units) satisfies Q >= erasedBits * 27 (k_B T ln 2 scale factor).
 public export
 0 LandauerBoundWitness : (erasedBits : Nat) -> (emittedHeat : Nat) -> Type
-LandauerBoundWitness erasedBits emittedHeat = natLTE (erasedBits * 27) emittedHeat = True
+LandauerBoundWitness erasedBits emittedHeat = natLTE (erasedBits * fst landauerQuantumDimension) emittedHeat = True
 
 ||| Static compile-time witness for 1 bit erasure emitting 27 heat units (27 <= 27).
 public export
