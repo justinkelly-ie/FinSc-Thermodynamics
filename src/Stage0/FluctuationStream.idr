@@ -5,6 +5,7 @@ import public Stage1.Order.Preorder
 import public Stage0.OnSeq.FusedStream
 import public Stage1.Thermodynamics.EntropicArrow
 import public Stage1.Multiset.PrimordialUnfolding
+import Stage0.StructuralFuel
 import Data.Fuel
 
 %default total
@@ -47,6 +48,18 @@ fusedTotalWork : Fuel -> List BoxInt -> BoxInt
 fusedTotalWork f workList =
   fusedTotalWorkStream f (unfoldWorkStream workList)
 
+||| Folds total work done across a deforested thermodynamic fluctuation stream using total structural Nat fuel.
+public export
+fusedTotalWorkNat : Nat -> List BoxInt -> BoxInt
+fusedTotalWorkNat fuel workList =
+  foldStreamNat fuel (\acc, step => addBox (workDone step) acc) (intToBoxInt 0) (unfoldWorkStream workList)
+
+||| Folds total work done across a deforested thermodynamic fluctuation stream using model-indexed GohFuel.
+public export
+fusedTotalWorkFuelModel : GohFuel cap -> List BoxInt -> BoxInt
+fusedTotalWorkFuelModel fuel workList =
+  fusedTotalWorkNat (gohSteps fuel) workList
+
 ||| Evaluates discrete Jarzynski-style exponent sum directly over a fluctuation stream:
 public export
 fusedJarzynskiLinearBoundStream : Fuel -> BoxInt -> FusedStream FluctuationStep -> BoxInt
@@ -59,6 +72,18 @@ public export
 fusedJarzynskiLinearBound : Fuel -> BoxInt -> List BoxInt -> BoxInt
 fusedJarzynskiLinearBound f beta workList =
   fusedJarzynskiLinearBoundStream f beta (unfoldWorkStream workList)
+
+||| Evaluates discrete Jarzynski-style exponent sum using total structural Nat fuel.
+public export
+fusedJarzynskiLinearBoundNat : Nat -> BoxInt -> List BoxInt -> BoxInt
+fusedJarzynskiLinearBoundNat fuel beta workList =
+  foldStreamNat fuel (\acc, step => addBox (subBox (intToBoxInt 1) (mulBox beta (workDone step))) acc) (intToBoxInt 0) (unfoldWorkStream workList)
+
+||| Evaluates discrete Jarzynski-style exponent sum using model-indexed GohFuel.
+public export
+fusedJarzynskiLinearBoundFuelModel : GohFuel cap -> BoxInt -> List BoxInt -> BoxInt
+fusedJarzynskiLinearBoundFuelModel fuel beta workList =
+  fusedJarzynskiLinearBoundNat (gohSteps fuel) beta workList
 
 --------------------------------------------------------------------------------
 -- 2. DEFORESTED ENTROPY DISSIPATION STREAM TRANSDUCERS & LANDAUER AUDIT

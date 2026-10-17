@@ -9,4 +9,5 @@ sourcedir = "src"
 modules = Thermodynamics,
           Stage0.FluctuationStream,
           Stage0.PreorderedMonoid,
-          Stage1.Thermodynamics.EntropicArrow
+          Stage1.Thermodynamics.EntropicArrow,
+          Stage1.Thermodynamics.FreeEnergyPoly
