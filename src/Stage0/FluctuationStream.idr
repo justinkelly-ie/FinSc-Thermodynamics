@@ -117,11 +117,29 @@ fusedEntropyDissipationStreamDirect : Fuel -> FusedStream EntropyDissipationStep
 fusedEntropyDissipationStreamDirect f strm =
   foldStreamFuel f (\acc, step => emittedHeat step + acc) 0 strm
 
+||| Direct deforested stream transducer folding total emitted heat across entropy dissipation steps over Nat fuel.
+public export
+fusedEntropyDissipationStreamNatDirect : Nat -> FusedStream EntropyDissipationStep -> Nat
+fusedEntropyDissipationStreamNatDirect fuel strm =
+  foldStreamNat fuel (\acc, step => emittedHeat step + acc) 0 strm
+
 ||| O(1) allocation deforested stream transducer folding total emitted heat across entropy dissipation steps.
 public export
 fusedEntropyDissipationStream : Fuel -> List (Nat, Nat) -> Nat
 fusedEntropyDissipationStream f steps =
   fusedEntropyDissipationStreamDirect f (unfoldDissipationStream steps)
+
+||| O(1) allocation deforested stream transducer folding total emitted heat across entropy dissipation steps over Nat fuel.
+public export
+fusedEntropyDissipationStreamNat : Nat -> List (Nat, Nat) -> Nat
+fusedEntropyDissipationStreamNat fuel steps =
+  fusedEntropyDissipationStreamNatDirect fuel (unfoldDissipationStream steps)
+
+||| O(1) allocation deforested stream transducer folding total emitted heat over model-indexed GohFuel.
+public export
+fusedEntropyDissipationStreamFuelModel : GohFuel cap -> List (Nat, Nat) -> Nat
+fusedEntropyDissipationStreamFuelModel fuel steps =
+  fusedEntropyDissipationStreamNat (gohSteps fuel) steps
 
 ||| Direct deforested stream transducer folding total erased bits across entropy dissipation steps.
 public export
@@ -144,6 +162,14 @@ fusedValidateDynamicLandauerStreamDirect f qBound strm =
         foldStreamFuel f (\acc, step => (fst acc + erasedBits step, snd acc + emittedHeat step)) (the (Nat, Nat) (0, 0)) strm
   in natLTE (totalBits * qBound) totalHeat
 
+||| Single-pass deforested stream transducer validating dynamic Landauer erasure bound over Nat fuel.
+public export
+fusedValidateDynamicLandauerStreamNatDirect : Nat -> (qBound : Nat) -> FusedStream EntropyDissipationStep -> Bool
+fusedValidateDynamicLandauerStreamNatDirect fuel qBound strm =
+  let (totalBits, totalHeat) =
+        foldStreamNat fuel (\acc, step => (fst acc + erasedBits step, snd acc + emittedHeat step)) (the (Nat, Nat) (0, 0)) strm
+  in natLTE (totalBits * qBound) totalHeat
+
 ||| Deforested stream transducer validating dynamic Landauer erasure bound across entropy dissipation steps
 ||| scaled by active boundary quadrance qBound = Q_Blue = x^2 + y^2:
 ||| Total emitted heat must be >= totalBits * qBound.
@@ -151,6 +177,12 @@ public export
 fusedValidateDynamicLandauerStream : Fuel -> (qBound : Nat) -> List (Nat, Nat) -> Bool
 fusedValidateDynamicLandauerStream f qBound steps =
   fusedValidateDynamicLandauerStreamDirect f qBound (unfoldDissipationStream steps)
+
+||| Deforested stream transducer validating dynamic Landauer erasure bound over Nat fuel.
+public export
+fusedValidateDynamicLandauerStreamNat : Nat -> (qBound : Nat) -> List (Nat, Nat) -> Bool
+fusedValidateDynamicLandauerStreamNat fuel qBound steps =
+  fusedValidateDynamicLandauerStreamNatDirect fuel qBound (unfoldDissipationStream steps)
 
 ||| Deforested stream transducer validating epoch-indexed Landauer erasure bound
 ||| where epoch index k determines dynamic boundary quadrance Q_Blue(x_k, y_k).
@@ -161,12 +193,26 @@ fusedValidateEpochLandauerStream f k steps =
       qBlueNat = boxToNat (addBox (mulBox x x) (mulBox y y))
   in fusedValidateDynamicLandauerStream f qBlueNat steps
 
+||| Deforested stream transducer validating epoch-indexed Landauer erasure bound over Nat fuel.
+public export
+fusedValidateEpochLandauerStreamNat : Nat -> (k : Nat) -> List (Nat, Nat) -> Bool
+fusedValidateEpochLandauerStreamNat fuel k steps =
+  let (x, y) = epochPythagoreanCoordinate k
+      qBlueNat = boxToNat (addBox (mulBox x x) (mulBox y y))
+  in fusedValidateDynamicLandauerStreamNat fuel qBlueNat steps
+
 ||| Deforested stream transducer validating Landauer erasure bound across entropy dissipation streams.
 ||| Deprecated: Prefer `fusedValidateDynamicLandauerStream` or `fusedValidateEpochLandauerStream`.
 public export
 fusedValidateLandauerStream : Fuel -> List (Nat, Nat) -> Bool
 fusedValidateLandauerStream f steps =
   fusedValidateDynamicLandauerStream f 27 steps
+
+||| Deforested stream transducer validating Landauer erasure bound over Nat fuel.
+public export
+fusedValidateLandauerStreamNat : Nat -> List (Nat, Nat) -> Bool
+fusedValidateLandauerStreamNat fuel steps =
+  fusedValidateDynamicLandauerStreamNat fuel 27 steps
 
 --------------------------------------------------------------------------------
 -- 3. VERIFICATION AUDIT WITNESS & LINEAR QTT ENTROPY TRANSDUCER
@@ -177,12 +223,12 @@ public export
 auditFluctuationStreamProof : Bool
 auditFluctuationStreamProof =
   let works = [intToBoxInt 2, intToBoxInt 3, intToBoxInt 5]
-      totW = fusedTotalWork (limit (length works)) works
-      jBound = fusedJarzynskiLinearBound (limit (length works)) (intToBoxInt 1) works
+      totW = fusedTotalWorkNat (length works) works
+      jBound = fusedJarzynskiLinearBoundNat (length works) (intToBoxInt 1) works
       dissSteps = [(1, 27), (2, 60), (3, 90)]
-      totHeat = fusedEntropyDissipationStream (limit (length dissSteps)) dissSteps
-      landauerValid = fusedValidateLandauerStream (limit (length dissSteps)) dissSteps
-      dynamicLandauerValid = fusedValidateEpochLandauerStream (limit (length dissSteps)) 0 dissSteps
+      totHeat = fusedEntropyDissipationStreamNat (length dissSteps) dissSteps
+      landauerValid = fusedValidateLandauerStreamNat (length dissSteps) dissSteps
+      dynamicLandauerValid = fusedValidateEpochLandauerStreamNat (length dissSteps) 0 dissSteps
   in unwrapBox totW == 10 && unwrapBox jBound == -7 && totHeat == 177 && landauerValid == True && dynamicLandauerValid == True
 
 ||| Strictly linear QTT entropy production stream transducer:
