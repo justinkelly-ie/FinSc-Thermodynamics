@@ -6,6 +6,7 @@ import public Stage0.Multiset
 import public Stage1.UnixelFraction
 import public Stage1.QuadStream
 import public Stage1.VexelMaxel
+import public Stage1.MultisetTree
 import public Stage1.ChromoCategory
 import public Stage1.MultisetDuality
 import public Stage1.TypeTheory.Staging
@@ -24,21 +25,22 @@ import public Stage1.TypeTheory.Smoothness
 ||| temperature T (index 1), and entropy S (index 2).
 public export
 thermoVexel : BoxInt -> BoxInt -> BoxInt -> Vexel
-thermoVexel u t s = MkVexel [(MkUnixel 0, u), (MkUnixel 1, t), (MkUnixel 2, s)]
+thermoVexel u t s =
+  let n0 = BoxNode 1 BoxLeaf (MkUnixel 0) u BoxLeaf
+      n2 = BoxNode 1 BoxLeaf (MkUnixel 2) s BoxLeaf
+      root = BoxNode 2 n0 (MkUnixel 1) t n2
+  in MkVexelTree root
 
 public export
 thermoInternalEnergy : Vexel -> BoxInt
-thermoInternalEnergy (MkVexel ((MkUnixel 0, u) :: _)) = u
 thermoInternalEnergy v = lookupUnixel (MkUnixel 0) v
 
 public export
 thermoTemperature : Vexel -> BoxInt
-thermoTemperature (MkVexel (_ :: (MkUnixel 1, t) :: _)) = t
 thermoTemperature v = lookupUnixel (MkUnixel 1) v
 
 public export
 thermoEntropy : Vexel -> BoxInt
-thermoEntropy (MkVexel (_ :: _ :: (MkUnixel 2, s) :: _)) = s
 thermoEntropy v = lookupUnixel (MkUnixel 2) v
 
 ||| Computes exact discrete Helmholtz Free Energy: F = U - T * S
@@ -241,7 +243,6 @@ public export
 MultisetScaleAdjunction Vexel ThermoMacroDomain where
   f_pushforward v = MkThermoMacro (thermoInternalEnergy v) (thermoTemperature v) (thermoEntropy v)
   f_pullback (MkThermoMacro e t s) = thermoVexel e t s
-  verifyUnit (MkVexel [(MkUnixel 0, u), (MkUnixel 1, t), (MkUnixel 2, s)]) = Refl
   verifyUnit _ = Refl
   verifyCounit _ = Refl
 
