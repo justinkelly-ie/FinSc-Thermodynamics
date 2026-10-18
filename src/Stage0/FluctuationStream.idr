@@ -229,7 +229,7 @@ auditFluctuationStreamProof =
       totHeat = fusedEntropyDissipationStreamNat (length dissSteps) dissSteps
       landauerValid = fusedValidateLandauerStreamNat (length dissSteps) dissSteps
       dynamicLandauerValid = fusedValidateEpochLandauerStreamNat (length dissSteps) 0 dissSteps
-  in unwrapBox totW == 10 && unwrapBox jBound == -7 && totHeat == 177 && landauerValid == True && dynamicLandauerValid == True
+  in totW == intToBoxInt 10 && jBound == intToBoxInt (-7) && totHeat == 177 && landauerValid == True && dynamicLandauerValid == True
 
 ||| Strictly linear QTT entropy production stream transducer:
 public export
@@ -246,7 +246,7 @@ linearEntropyTransducer =
                       Skip s' => Skip s'
                       Yield step s' =>
                         let q = heatLoss step
-                            nonNeg = unwrapBox q >= 0
+                            nonNeg = q >= intToBoxInt 0
                         in Yield (q, nonNeg) s') seed)
 
 ||| Audits that open-system thermodynamic dissipation satisfies monotonic non-negative entropy production.
@@ -326,6 +326,6 @@ auditDirectThermalFreeEnergyProof =
       strm = stream hadronPairs
       temp = intToBoxInt 10
       f = streamThermalFreeEnergyNat 100 temp strm
-  in unwrapBox f == 20
+  in f == intToBoxInt 20
 
 

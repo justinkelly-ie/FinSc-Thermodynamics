@@ -66,7 +66,7 @@ public export
 isFreeEnergyMinimizing : Vexel -> Vexel -> Bool
 isFreeEnergyMinimizing b a =
   let dF = computeDeltaF b a
-  in unwrapBox dF <= 0
+  in dF <= intToBoxInt 0
 
 --------------------------------------------------------------------------------
 -- 3. IRREVERSIBLE COSMOLOGICAL STATE UPDATE
@@ -187,7 +187,7 @@ auditMultisetThermoFreeEnergyProof =
       s2 = makeThermoMultiset (intToBoxInt 100) (intToBoxInt 10) (intToBoxInt 5)
       f1 = multisetComputeFreeEnergy s1
       f2 = multisetComputeFreeEnergy s2
-  in unwrapBox f1 == 80 && unwrapBox f2 == 50 && unwrapBox f2 <= unwrapBox f1
+  in f1 == intToBoxInt 80 && f2 == intToBoxInt 50 && f2 <= f1
 
 --------------------------------------------------------------------------------
 -- 7. COMPILE-TIME LANDAUER ERASED HEAT BOUND WITNESSES (Delta Q >= erasedBits * 27)
