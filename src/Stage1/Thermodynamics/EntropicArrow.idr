@@ -3,11 +3,12 @@ module Stage1.Thermodynamics.EntropicArrow
 import public Stage0.BoxInt
 import public Stage0.WitnessLedger
 import public Stage0.Multiset
-import public Stage1.UnixelFraction
 import public Stage1.QuadStream
-import public Stage1.VexelMaxel
-import public Stage1.MultisetTree
+import public Stage1.UnixelFraction
+import public Stage1.Carrier.Vexel
+import public Stage1.Basis.Coordinate
 import public Stage1.ChromoCategory
+import public Stage1.MultisetTree
 import public Stage1.MultisetDuality
 import public Stage1.TypeTheory.Staging
 import public Stage1.TypeTheory.TwoLevel

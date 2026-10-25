@@ -3,7 +3,7 @@ module Stage1.Thermodynamics.FreeEnergyPoly
 import Stage0.BoxInt
 import Stage1.Polynumber
 import Stage1.UnixelFraction
-import Stage1.VexelMaxel
+import Stage1.Carrier.Vexel
 import Stage1.Thermodynamics.EntropicArrow
 import Data.Vect
 
