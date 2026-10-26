@@ -5,7 +5,6 @@ import public Stage0.WitnessLedger
 import public Stage0.Multiset
 import public Stage1.QuadStream
 import public Stage1.UnixelFraction
-import public Stage1.Carrier.Vexel
 import public Stage1.Basis.Coordinate
 import public Stage1.ChromoCategory
 import public Stage1.MultisetTree
